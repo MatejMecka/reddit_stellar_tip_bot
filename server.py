@@ -76,7 +76,12 @@ def payment():
 
     else:
         c = get_db().cursor()
-        c.execute("SELECT account from accounts WHERE username=?", (str(user), ))
+        statement = "SELECT account from accounts WHERE username=?"
+        
+        if USE_SQLITE3 == "False":
+            statement = statement.replace('?', '%s')
+
+        c.execute(statement, (str(user), ))
         rows = cursor.fetchone()
 
         if rows == None:
