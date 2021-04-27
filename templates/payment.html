@@ -1,0 +1,27 @@
+<!DOCTYPE html>
+<html>
+<head>
+	<title>StellarTipBot - Payment</title>
+	<link rel="stylesheet" href="{{ url_for('static', filename= 'css/style.css') }}">
+	<link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/materialize/1.0.0/css/materialize.min.css">
+</head>
+<body>
+	<div class="container">
+	<h1>Pay {{ username }}</h1>
+	<h2>You're going to pay {{ amount }} XLM To the following user. In order to proceed sign the following transaction by clicking the button.</h2>
+	  
+	<script src="https://albedo.link/albedo-intent-button.js"
+	  x-intent="pay"
+	  x-amount="{{ amount }}"
+	  x-destination="{{ public_key }}"
+	  x-network="testnet"
+	  x-height="30"
+	  x-width="200"
+	  x-class-name="waves-effect waves-light btn"
+	  x-title="Pay {{ username }}" 
+	  x-callback="url:{{ request.url }}"
+	  async>
+	</script>
+	</div>
+</body>
+</html>

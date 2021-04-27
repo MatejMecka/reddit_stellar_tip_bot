@@ -1,0 +1,69 @@
+from flask import Flask, render_template, request, g
+from dotenv import load_dotenv
+from praw import Reddit
+from stellar_sdk import Server
+import sqlite3
+import os
+
+app = Flask(__name__)
+
+
+DATABASE = 'accounts.db'
+
+load_dotenv()
+CLIENT = os.getenv("CLIENT_ID")
+SECRET = os.getenv("CLIENT_SECRET")
+USERNAME = os.getenv("USERNAME")
+PASSWORD = os.getenv("PASSWORD")
+
+reddit = Reddit(
+    user_agent="Stellar Tip Bot v0.0.1",
+    client_id=CLIENT,
+    client_secret=SECRET,
+    username=USERNAME,
+    password=PASSWORD,
+)
+
+HORIZON_URL = os.getenv("HORIZON_URL")
+server = Server(HORIZON_URL)
+
+def get_db():
+    db = getattr(g, '_database', None)
+    if db is None:
+        db = g._database = sqlite3.connect(DATABASE)
+    return db
+
+@app.teardown_appcontext
+def close_connection(exception):
+    db = getattr(g, '_database', None)
+    if db is not None:
+        db.close()
+
+@app.route('/payment', methods=['GET', 'POST'])
+def payment():
+    user = request.args.get('user')
+    amount = request.args.get('amount')
+
+    if request.method == 'POST':
+        data = request.form
+        transaction = data["signed_envelope_xdr"]
+
+        try:
+            response = server.submit_transaction(transaction)
+            reddit.redditor(user).message("You have been tipped!",f"A user has tipped you {amount} XLM! You can view the transaction at the following url: https://stellar.expert/explorer/testnet/tx/{response['id']}")
+            return "Success!"
+        except Exception as e:
+            return str(e)
+
+
+
+    else:
+        c = get_db().cursor()
+        cursor = c.execute("SELECT account from accounts WHERE username=?", (str(user), ))
+        rows = cursor.fetchall()
+
+        if rows == []:
+            return "404, not found"
+
+
+    return render_template("payment.html", amount=amount, public_key=rows[0][0], username=user)
