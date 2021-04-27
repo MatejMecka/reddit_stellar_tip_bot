@@ -1,6 +1,5 @@
 praw
 mysql.connector
 flask
-sqlite3
 stellar_sdk
 dotenv
