@@ -2,4 +2,4 @@ praw
 mysql.connector
 flask
 stellar_sdk
-dotenv
+python-dotenv
