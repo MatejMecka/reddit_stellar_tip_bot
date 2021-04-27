@@ -27,10 +27,26 @@ reddit = Reddit(
 HORIZON_URL = os.getenv("HORIZON_URL")
 server = Server(HORIZON_URL)
 
+USE_SQLITE3 = os.getenv("USE_SQLITE3")
+MARIA_DB_HOST = os.getenv("MARIA_DB_HOST")
+MARIA_DB_USER = os.getenv("MARIA_DB_USER")
+MARIA_DB_PASSWORD = os.getenv("MARIA_DB_PASSWORD")
+MARIA_DB_PORT = os.getenv("MARIA_DB_PORT")
+MARIA_DB_DATABASE = os.getenv("MARIA_DB_DATABASE")
+
 def get_db():
     db = getattr(g, '_database', None)
     if db is None:
-        db = g._database = sqlite3.connect(DATABASE)
+        if USE_SQLITE3 == "True":
+            db = g._database = sqlite3.connect(DATABASE)
+        else:
+            db = g._database = mariadb.connect(
+            user=MARIA_DB_USER,
+            password=MARIA_DB_PASSWORD,
+            host=MARIA_DB_HOST,
+            port=int(MARIA_DB_PORT),
+            database=MARIA_DB_DATABASE
+        )
     return db
 
 @app.teardown_appcontext
@@ -59,11 +75,10 @@ def payment():
 
     else:
         c = get_db().cursor()
-        cursor = c.execute("SELECT account from accounts WHERE username=?", (str(user), ))
-        rows = cursor.fetchall()
+        c.execute("SELECT account from accounts WHERE username=?", (str(user), ))
+        rows = cursor.fetchone()
 
-        if rows == []:
+        if rows == None:
             return "404, not found"
 
-
-    return render_template("payment.html", amount=amount, public_key=rows[0][0], username=user)
+    return render_template("payment.html", amount=amount, public_key=rows[0], username=user)

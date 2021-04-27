@@ -1,0 +1,6 @@
+praw
+mariadb
+flask
+sqlite3
+stellar_sdk
+dotenv
