@@ -29,6 +29,9 @@ MARIA_DB_PASSWORD = os.getenv("MARIA_DB_PASSWORD")
 MARIA_DB_PORT = os.getenv("MARIA_DB_PORT")
 MARIA_DB_DATABASE = os.getenv("MARIA_DB_DATABASE")
 
+# Website
+SIGNING_URL = os.getenv("SIGNING_URL")
+
 if USE_SQLITE3 == "True":
     conn = sqlite3.connect('accounts.db')
 else:
@@ -59,6 +62,11 @@ reddit = Reddit(
     password=PASSWORD,
 )
 
+def statementForDB(statement):
+    if USE_SQLITE3 == "False":
+        return statement.replace('?', '%s')
+    return statement
+
 def create_account(username, public_key):
     # Check if Valid key
     try:
@@ -67,8 +75,9 @@ def create_account(username, public_key):
         return "The provided Public Key is invalid!"
 
     # Create Account or replace
-    try:    
-        c.execute("REPLACE INTO accounts (username, account) VALUES(?,?)", (str(username), str(public_key)))
+    try:
+        statement = "REPLACE INTO accounts (username, account) VALUES(?,?)"
+        c.execute(statementForDB(statement), (str(username), str(public_key)))
         conn.commit()
         return "Account has been succesfully created!"
     except Exception as e:
@@ -77,7 +86,8 @@ def create_account(username, public_key):
 
     # Check if user was wanted
     try: 
-        c.execute("SELECT person_to_be_notified from to_notify WHERE persons_account=?", (str(user), ))
+        statement = "SELECT person_to_be_notified from to_notify WHERE persons_account=?"
+        c.execute(statementForDB(statement), (str(user), ))
         rows = c.fetchone()
     except Exception as e:
         print(f"ERROR: {str(e)}")
@@ -92,7 +102,8 @@ def payment(amount, user, original_poster):
     # Check if User Exists
     user = user.replace('/u/', '').replace('u/', '').replace('/U/', '')
     try:
-        c.execute("SELECT account from accounts WHERE username=?", (str(user), ))
+        statement = "SELECT account from accounts WHERE username=?"
+        c.execute(statementForDB(statement), (str(user), ))
         public_key = c.fetchone()
     except Exception as e:
         print(f"ERROR with Payment: {str(e)}")
@@ -104,13 +115,14 @@ def payment(amount, user, original_poster):
         
         # Add user for later notification
         try:
-            c.execute("REPLACE INTO to_notify (person_to_be_notified, persons_account) VALUES(?,?)", (str(original_poster), str(user)))
+            statement = "REPLACE INTO to_notify (person_to_be_notified, persons_account) VALUES(?,?)"
+            c.execute(statementForDB(statement), (str(original_poster), str(user)))
             conn.commit()
         except Exception as e:
                 print(f"ERROR with Payment: {str(e)}")
         return "The user does not have a Stellar Account setten up with me. They have been notified you want to tip them."
     else:
-        return f"Hi there! In order to tip the following person visit the following page: https://nesho.com/payment?user={user}&amount={amount}"
+        return f"Hi there! In order to tip the following person visit the following page: {SIGNING_URL}/payment?user={user}&amount={amount}"
     
 
 def main():

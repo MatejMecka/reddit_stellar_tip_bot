@@ -72,8 +72,6 @@ def payment():
         except Exception as e:
             return str(e)
 
-
-
     else:
         c = get_db().cursor()
         statement = "SELECT account from accounts WHERE username=?"
