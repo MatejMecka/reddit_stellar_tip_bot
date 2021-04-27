@@ -1,5 +1,5 @@
 praw
-mariadb
+mysql.connector
 flask
 sqlite3
 stellar_sdk

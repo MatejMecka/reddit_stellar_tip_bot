@@ -3,6 +3,7 @@ from dotenv import load_dotenv
 from praw import Reddit
 from stellar_sdk import Server
 import sqlite3
+import mysql.connector
 import os
 
 app = Flask(__name__)
@@ -40,7 +41,7 @@ def get_db():
         if USE_SQLITE3 == "True":
             db = g._database = sqlite3.connect(DATABASE)
         else:
-            db = g._database = mariadb.connect(
+            db = g._database = mysql.connector.connect(
             user=MARIA_DB_USER,
             password=MARIA_DB_PASSWORD,
             host=MARIA_DB_HOST,

@@ -5,7 +5,7 @@ from dotenv import load_dotenv
 from stellar_sdk import Keypair, exceptions
 import logging
 import sqlite3
-import mariadb
+import mysql.connector
 import sys  
 
 """
@@ -33,7 +33,7 @@ if USE_SQLITE3 == "True":
     conn = sqlite3.connect('accounts.db')
 else:
     try:
-        conn = mariadb.connect(
+        conn = mysql.connector.connect(
             user=MARIA_DB_USER,
             password=MARIA_DB_PASSWORD,
             host=MARIA_DB_HOST,
@@ -42,7 +42,7 @@ else:
         )
 
     except Exception as e:
-        print(f"Error connecting to MariaDB Platform: {e}")
+        print(f"Error connecting to Mysql Database: {e}")
         sys.exit(1)
 
 c = conn.cursor()
