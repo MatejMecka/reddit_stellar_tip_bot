@@ -119,7 +119,7 @@ def payment(amount, user, original_poster):
 
     if public_key is None:
         # Inform user
-        reddit.redditor(user).message(f'{original_poster} wants to tip you!', f'Hey there! The user in the subject wants to tip you {amount} XLM. In order to accept the tip create an account using `setaddress [ADDRESS]`')
+        reddit.redditor(user).message(f'{original_poster} wants to tip you!', f'Hey there! The user in the subject wants to tip you {amount} XLM. In order to accept the tip create an account by replying to this message with: `setaddress [ADDRESS]` where `[ADDRESS]` is the Stellar Wallet where you want to receive the tip.')
         
         # Add user for later notification
         try:
@@ -153,16 +153,16 @@ def main():
 
                 if command == "help":
                     mention.reply("""
-                        Hello! This are the commands I currently support
-                        `help` <- You ran this! 😎
+                    Hello! This are the commands I currently support
+                    `help` <- You ran this! 😎
 
-                        `tip [AMOUNT] [USER]` <- Pay a certain reddit user `[AMOUNT]` XLM
+                    `tip [AMOUNT] [USER]` <- Pay a certain reddit user `[AMOUNT]` XLM
 
-                        `tip [AMOUNT] [ASSET_NAME] [ASSET_ISSUER] [USER]` <- Creates a Claimable balance for a certain asset to a user
+                    `tip [AMOUNT] [ASSET_NAME] [ASSET_ISSUER] [USER]` <- Creates a Claimable balance for a certain asset to a user
 
-                        `setAddress [STELLAR_ADDRESS]` <- Set your Stellar Public Key so others can tip you.
+                    `setAddress [STELLAR_ADDRESS]` <- Set your Stellar Public Key so others can tip you.
 
-                        The bot uses [Albedo](https://albedo.link/) for signing transactions so make sure you have it installed.
+                    The bot uses [Albedo](https://albedo.link/) for signing transactions so make sure you have it installed.
                     """)
                     continue
                 if command == "tip":
