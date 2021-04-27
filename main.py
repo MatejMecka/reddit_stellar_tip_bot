@@ -50,7 +50,7 @@ else:
 
 c = conn.cursor()
 c.execute('''CREATE TABLE IF NOT EXISTS accounts (id INTEGER AUTO_INCREMENT PRIMARY KEY, username text, account text)''')
-c.execute('''CREATE TABLE IF NOT EXISTS to_notify (id INTEGER AUTO_INCREMENT PRIMARY KEY, person_to_be_notified text, persons_account text)''')
+c.execute('''CREATE TABLE IF NOT EXISTS to_notify (id INTEGER AUTO_INCREMENT PRIMARY KEY, person_to_be_notified text, persons_account text, amount int)''')
 conn.commit()
 
 # Create the reddit object instance using Praw
@@ -79,24 +79,32 @@ def create_account(username, public_key):
         statement = "REPLACE INTO accounts (username, account) VALUES(?,?)"
         c.execute(statementForDB(statement), (str(username), str(public_key)))
         conn.commit()
-        return "Account has been succesfully created!"
     except Exception as e:
         print(f"ERROR: {str(e)}")
         return f"There was an error creating your account: {str(e)}"
 
     # Check if user was wanted
     try: 
-        statement = "SELECT person_to_be_notified from to_notify WHERE persons_account=?"
-        c.execute(statementForDB(statement), (str(user), ))
-        rows = c.fetchone()
+        statement = "SELECT person_to_be_notified, amount, id from to_notify WHERE persons_account=?"
+        c.execute(statementForDB(statement), (str(username), ))
+        rows = c.fetchall()
     except Exception as e:
         print(f"ERROR: {str(e)}")
 
-    if rows is None:
+    # Notify everyone else
+    if rows is []:
         pass
     else:
-        reddit.redditor(user).message(f'{rows[0]} opened an account!', f'The person in the subject setup their Stellar Wallet! You can now reissue the same command.')
+        for row in rows:
+            try:
+                reddit.redditor(row[0]).message(f'{username} opened an account!', f'The person in the subject setup their Stellar Wallet! Visit the following url to proceed with tipping: {SIGNING_URL}/payment?user={username}&amount={row[1]}.')
+                statement = "DELETE FROM to_notify WHERE id=?"
+                c.execute(statementForDB(statement), (int(row[2]), ))
+                conn.commit()
+            except Exception as e:
+                print(f"Error deleting from table: {str(e)}")
 
+    return "Account has been succesfully created!"
 
 def payment(amount, user, original_poster):
     # Check if User Exists
@@ -115,8 +123,8 @@ def payment(amount, user, original_poster):
         
         # Add user for later notification
         try:
-            statement = "REPLACE INTO to_notify (person_to_be_notified, persons_account) VALUES(?,?)"
-            c.execute(statementForDB(statement), (str(original_poster), str(user)))
+            statement = "INSERT INTO to_notify (person_to_be_notified, persons_account, amount) VALUES(?,?,?)"
+            c.execute(statementForDB(statement), (str(original_poster), str(user), int(amount) ))
             conn.commit()
         except Exception as e:
                 print(f"ERROR with Payment: {str(e)}")
@@ -159,10 +167,12 @@ def main():
                     continue
                 if command == "tip":
                     if len(arguments) == 4:
-                        pass
-                    else:
+                        mention.reply('Not implemented')
+                    elif len(arguments) == 2:
                         message = payment(arguments[0], arguments[1], mention.author)
                         mention.reply(message)
+                    else:
+                        mention.reply('Invalid number of arguments')
                     continue
                 if command == "setaddress":
                     message = create_account(mention.author, arguments[0])
