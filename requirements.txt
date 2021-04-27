@@ -3,3 +3,4 @@ mysql.connector
 flask
 stellar_sdk
 python-dotenv
+gunicorn
