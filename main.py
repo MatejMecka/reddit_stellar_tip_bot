@@ -2,7 +2,7 @@ import os
 from praw import Reddit
 from praw.models import Submission, Subreddit, Comment
 from dotenv import load_dotenv
-from stellar_sdk import Keypair, exceptions
+from stellar_sdk import Keypair, Asset, exceptions
 import logging
 import sqlite3
 import mysql.connector
@@ -50,7 +50,7 @@ else:
 
 c = conn.cursor()
 c.execute('''CREATE TABLE IF NOT EXISTS accounts (id INTEGER AUTO_INCREMENT PRIMARY KEY, username text, account text)''')
-c.execute('''CREATE TABLE IF NOT EXISTS to_notify (id INTEGER AUTO_INCREMENT PRIMARY KEY, person_to_be_notified text, persons_account text, amount int)''')
+c.execute('''CREATE TABLE IF NOT EXISTS to_notify (id INTEGER AUTO_INCREMENT PRIMARY KEY, person_to_be_notified text, persons_account text, amount int, asset_name text, asset_issuer text)''')
 conn.commit()
 
 # Create the reddit object instance using Praw
@@ -106,7 +106,7 @@ def create_account(username, public_key):
 
     return "Account has been succesfully created!"
 
-def payment(amount, user, original_poster):
+def payment(user, amount, original_poster, asset_code=None, asset_issuer=None):
     # Check if User Exists
     user = user.replace('/u/', '').replace('u/', '').replace('/U/', '')
     try:
@@ -117,20 +117,34 @@ def payment(amount, user, original_poster):
         print(f"ERROR with Payment: {str(e)}")
         return f"There was an error finding the account for the recepient: {str(e)}"
 
+    # Check if it's custom asset
+    if asset_code == None and asset_issuer == None:
+        asset_name = "XLM"
+    else:
+        try:
+            asset = Asset(asset_code, asset_issuer)
+            asset_name = asset_code
+        except Exception as e:
+            return f"There was an error processing the custom asset: {str(e)}"
+
     if public_key is None:
         # Inform user
-        reddit.redditor(user).message(f'{original_poster} wants to tip you!', f'Hey there! The user in the subject wants to tip you {amount} XLM. In order to accept the tip create an account by replying to this message with: `setaddress [ADDRESS]` where `[ADDRESS]` is the Stellar Wallet where you want to receive the tip.')
+        reddit.redditor(user).message(f'{original_poster} wants to tip you!', f'Hey there! The user in the subject wants to tip you {amount} {asset_name}. In order to accept the tip create an account by replying to this message with: `setaddress [ADDRESS]` where `[ADDRESS]` is the Stellar Wallet where you want to receive the tip.')
         
         # Add user for later notification
         try:
-            statement = "INSERT INTO to_notify (person_to_be_notified, persons_account, amount) VALUES(?,?,?)"
-            c.execute(statementForDB(statement), (str(original_poster), str(user), int(amount) ))
+            statement = "INSERT INTO to_notify (person_to_be_notified, persons_account, amount, asset_name, asset_issuer) VALUES(?,?,?,?,?)"
+            c.execute(statementForDB(statement), (str(original_poster), str(user), int(amount), str(asset_name), str(asset_issuer)))
             conn.commit()
         except Exception as e:
-                print(f"ERROR with Payment: {str(e)}")
+            print(f"ERROR with Payment: {str(e)}")
         return "The user does not have a Stellar Account setten up with me. They have been notified you want to tip them."
     else:
-        return f"Hi there! In order to tip the following person visit the following page: {SIGNING_URL}/payment?user={user}&amount={amount}"
+        if asset_name == "XLM":
+            url = f"{SIGNING_URL}/payment?user={user}&amount={amount}"
+        else:
+            url = f"{SIGNING_URL}/create-claimable-balance?user={user}&amount={amount}&asset_name={asset_name}&asset_issuer={asset_issuer}"
+        return f"Hi there! In order to tip the following person visit the following page: {url}"
     
 
 def main():
@@ -153,12 +167,12 @@ def main():
 
                 if command == "help":
                     mention.reply("""
-                    Hello! This are the commands I currently support
+                    Hello! This are the commands I currently support:
                     `help` <- You ran this! 😎
 
-                    `tip [AMOUNT] [USER]` <- Pay a certain reddit user `[AMOUNT]` XLM
+                    `tip [USER] [AMOUNT]` <- Pay a certain reddit user `[AMOUNT]` XLM
 
-                    `tip [AMOUNT] [ASSET_NAME] [ASSET_ISSUER] [USER]` <- Creates a Claimable balance for a certain asset to a user
+                    `tip [USER] [AMOUNT] [ASSET_NAME] [ASSET_ISSUER]` <- Creates a Claimable balance for a certain asset to a user
 
                     `setAddress [STELLAR_ADDRESS]` <- Set your Stellar Public Key so others can tip you.
 
@@ -167,12 +181,12 @@ def main():
                     continue
                 if command == "tip":
                     if len(arguments) == 4:
-                        mention.reply('Not implemented')
+                        message = payment(arguments[0], arguments[1], mention.author, arguments[2], arguments[3])
                     elif len(arguments) == 2:
                         message = payment(arguments[0], arguments[1], mention.author)
-                        mention.reply(message)
                     else:
-                        mention.reply('Invalid number of arguments')
+                        message = 'Invalid number of arguments'
+                    mention.reply(message)
                     continue
                 if command == "setaddress":
                     message = create_account(mention.author, arguments[0])

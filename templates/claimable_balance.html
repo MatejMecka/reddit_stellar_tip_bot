@@ -1,0 +1,65 @@
+<!DOCTYPE html>
+<html>
+<head>
+	<title>StellarTipBot - Claimable Balance</title>
+	<link rel="stylesheet" href="{{ url_for('static', filename='css/style.css') }}">
+	<link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/materialize/1.0.0/css/materialize.min.css">
+	<script src="{{ url_for('static', filename= 'js/bundle.js')  }}"></script>
+</head>
+<body>
+	<div class="container">
+	<h1>Pay {{ username }}</h1>
+	<h2>You're going to pay {{ amount }} {{ asset_name }} To the following user. In order to proceed sign the following transaction by clicking the button.</h2>
+	<h4><b>This is a multistep transaction!</b> Allow Popups from this website to succesfully complete it</h4>
+	<button class="waves-effect waves-light btn" onClick="handleButton()">Pay {{ username }} </button>
+	</div>
+</body>
+<script>
+	let handleButton = function(){
+		albedo.publicKey({
+    		token: 'tROcla+bxFqytCSF7/GZX4oxX5gYxJMQZA7XZtZr7iU='
+		}).then(async function(res){
+			console.log(res.pubkey, res.signed_message, res.signature)
+			
+			// Create account
+			let server = new stellarSdk.Server("{{ horizon_url }}");
+			let Asset = new stellarSdk.Asset("{{ asset_name }}","{{ asset_issuer}}")
+			let A = stellarSdk.Keypair.fromPublicKey(res.pubkey);
+
+			let aAccount = await server.loadAccount(A.publicKey()).catch(function (err) {
+				alert(`Failed to load ${A.publicKey()}: ${err}`)
+			})
+
+			if (!aAccount) { return }
+
+			let predicate = stellarSdk.Claimant.predicateUnconditional()
+
+			let claimableBalanceEntry = stellarSdk.Operation.createClaimableBalance({
+			    claimants: [
+			      new stellarSdk.Claimant("{{ public_key }}", predicate),
+			    ],
+			    asset: Asset,
+			    amount: "{{ amount }}",
+			});
+
+			let tx = new stellarSdk.TransactionBuilder(aAccount, {fee: stellarSdk.BASE_FEE})
+			    .addOperation(claimableBalanceEntry)
+			    .setNetworkPassphrase(stellarSdk.Networks.TESTNET) // Not hardcode this
+			    .setTimeout(180)
+			    .build();
+
+			// Sanitizing hacks 
+			var callback = 'url:{{ request.url }}'
+			callback = callback.replaceAll('&amp;', '&')
+			console.log(callback)
+
+			albedo.tx({
+			    xdr: tx.toXDR(),
+			    network: 'testnet',
+			    callback: callback
+			}).then(res => console.log(res.xdr, res.tx_hash, res.signed_envelope_xdr, res.network, res.result))
+		})
+	}
+
+</script>
+</html>
