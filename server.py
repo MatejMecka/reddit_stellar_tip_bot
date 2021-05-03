@@ -142,7 +142,7 @@ def claim_claimable_balances():
 
     # Retrieve Balance
     try:
-        balances = server.accounts().account_id(balance['claimants'][0]['destination']).call()['balances']
+        balances = server.accounts().account_id(balance['claimants'][0]['destination']).order(desc=False).call()['balances']
     except Exception as e:
         return str(e)
 
